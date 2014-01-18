@@ -38,10 +38,10 @@ Replication
 Definition: ```rep(x, times)```
 
 The ```rep``` function replicates the input argument a specified 
-number of times. For example to create an array of four 1s, use
-```rep(1,4)```.
-It is possible to pass an array as an argument, in which case the result
-is a single array with all elements concatenated: ```rep([1,2,3], 4)```.
+number of times. For example to create an array of four 1s, 
+use ```rep(1,4)```. It is possible to pass an array as an argument,
+in which case the result is a single array with all elements 
+concatenated: ```rep([1,2,3], 4)```.
 
 Selections
 ----------
