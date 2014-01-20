@@ -180,12 +180,14 @@ function max(x) {
  *
  * @param x The sample space
  * @param size The number of samples to draw
- * @param prob Cumulative probabilities. The last value must be 1
+ * @param prob The probabilities, which must sum to 1
  */
 function sample(x, size, prob) {
-  if (typeof prob === 'undefined') prob = cumsum(rep(1/x, x))
+  if (typeof prob === 'undefined') prob = cumsum(rep(1/x.length, x))
+  x = _vectorize(x)
+  prob = _vectorize(prob)
   if (x.length != prob.length) throw "Length of x and prob must be equal"
-  if (prob[prob.length-1] != 1) throw "Probabilities must be cumulative"
+  if (sum(prob) != 1) throw "Sum of probabilities must equal 1"
   var sample_one = function(x, prob) {
     var p = Math.random()
     //console.log(p)
@@ -195,7 +197,7 @@ function sample(x, size, prob) {
     },[])
     return v[0]
   }
-  return seq(1,size).map(function(z) { return sample_one(x, prob) })
+  return seq(1,size).map(function(z) { return sample_one(x, cumsum(prob)) })
 }
 
 function runif(n, min, max) {
