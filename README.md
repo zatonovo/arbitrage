@@ -1,5 +1,8 @@
-JuiceR
-======
+arbitrage.js
+============
+
+Arbitrage.js takes advantage of R idioms in the world of Javascript giving 
+you a risk-free gain in productivity.
 
 For those working with data and looking to perform data visualization,
 the concept of vectorization is extremely useful. The short definition
@@ -9,7 +12,7 @@ natively perform element-wise addition while operations like max
 natively know how to operate on an array.
 
 Since Javascript doesn't support vectors out of the box, an external library
-must do the work. JuiceR does just this, while also providing tools to
+must do the work. Arbitrage.js does just this, while also providing tools to
 work with sequences in general as well as sample spaces and probability
 distributions.
 
