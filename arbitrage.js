@@ -1,5 +1,5 @@
 /**
- * JuiceR Library v0.1.0
+ * aRbitrage.js Library v0.1.1
  * This library introduces vectorization semantics into Javascript. Function
  * APIs are ported more or less verbatim from R.
  *
@@ -15,6 +15,7 @@
  */
 function _vectorize(x) {
   if (x instanceof Array) return x
+  if (x.length !== undefined) return Array.prototype.slice.call(x)
   return [x]
 }
 
@@ -28,6 +29,30 @@ function _recycle(x,y) {
   if (x.length % y.length == 0) return [x, rep(y, x.length / y.length)]
   if (y.length % x.length == 0) return [rep(x, y.length / x.length), y]
   throw "Incompatible arrays"
+}
+
+function map(x, f) {
+  x = _vectorize(x)
+  return x.map(f)
+}
+
+function fold(x, f, acc) {
+  x = _vectorize(x)
+  return x.reduce(f, acc)
+}
+
+function filter(x, pred) {
+  x = _vectorize(x)
+  return x.filter(pred)
+}
+
+
+function do_call(f, args) {
+  return f.apply(null, args)
+}
+
+function c() {
+  return fold(arguments, function(acc, x) { return acc.concat(x) }, [ ])
 }
 
 /**
@@ -90,7 +115,54 @@ function which(x, fn) {
     if (fn(v)) acc.push(i)
     return acc
   }
-  return x.reduce(reduce_fn, [ ])
+  return fold(x, reduce_fn, [ ])
+}
+
+function unique(x) {
+  x = _vectorize(x)
+  return Object.keys(x.reduce(function(r,v){ return r[v]=1,r; },{}));
+}
+
+function zip() {
+  var arrays = _vectorize(arguments)
+  if (arrays.length == 1) arrays = arrays[0]
+
+  return map(arrays[0], function(_,i) {
+    return map(arrays, function(array) {return array[i]})
+  });
+}
+
+/**
+ * @examples
+ * expand_grid(seq(1,2), seq(3,5))
+ */
+function expand_grid(xs, ys) {
+  xs = _vectorize(xs)
+  ys = _vectorize(ys)
+  var raw = map(ys, function(y) { return zip(_recycle(xs,y)) })
+  return do_call(c, raw)
+}
+
+function keys(x) {
+  return Object.keys(x)
+}
+
+function values(x) {
+  return map(Object.keys(x), function(k) { return x[k] })
+}
+
+
+function table(x) {
+  return fold(x, function(acc,i) {
+    if (acc[i] === undefined) acc[i] = 1
+    else acc[i] = acc[i] + 1
+    return acc
+  }, {})
+}
+
+function paste(x, collapse) {
+  x = _vectorize(x)
+  return x.join(collapse)
 }
 
 /******************************* MATH FUNCTIONS *****************************/
@@ -98,13 +170,13 @@ function which(x, fn) {
 function add(x,y) {
   var vs = _recycle(x,y)
   var idx = seq(0, vs[0].length-1)
-  return idx.map(function(i) { return vs[0][i] + vs[1][i] })
+  return map(idx, function(i) { return vs[0][i] + vs[1][i] })
 }
 
 function multiply(x,y) {
   var vs = _recycle(x,y)
   var idx = seq(0, vs[0].length-1)
-  return idx.map(function(i) { return vs[0][i] * vs[1][i] })
+  return map(idx, function(i) { return vs[0][i] * vs[1][i] })
 }
 
 function inner_product(x,y) {
@@ -120,7 +192,7 @@ function inner_product(x,y) {
  */
 function sum(x) {
   x = _vectorize(x)
-  return x.reduce(function(acc, i) { return acc + i }, 0)
+  return fold(x, function(acc, i) { return acc + i }, 0)
 }
 
 /**
@@ -130,7 +202,7 @@ function sum(x) {
  */
 function prod(x) {
   x = _vectorize(x)
-  return x.reduce(function(acc, i) { return acc * i }, 0)
+  return fold(x, function(acc, i) { return acc * i }, 0)
 }
 
 /**
@@ -159,19 +231,27 @@ function cumprod(x) {
 /**
  * Find the minimum within an array
  */
-function min(x) {
-  x = _vectorize(x)
+function min() {
+  x = c.apply(null, arguments)
   return Math.min.apply(null, x)
 }
 
 /**
  * Find the maximum within an array
  */
-function max(x) {
-  x = _vectorize(x)
+function max() {
+  x = c.apply(null, arguments)
   return Math.max.apply(null, x)
 }
 
+/**
+ * Get the cartesian product of two vectors as though they were sets
+ */
+function cartesian_product(x,y) {
+  x = _vectorize(x)
+  y = _vectorize(y)
+  return fold(x, function(a,b) { return c(a,zip(_recycle(b,y))) }, [ ])
+}
 
 /******************************* PROBABILITY ********************************/
 
@@ -181,35 +261,49 @@ function max(x) {
  * @param x The sample space
  * @param size The number of samples to draw
  * @param prob The probabilities, which must sum to 1
+ * @param replace Whether to use replacement. The default is true
+ * @examples
+ * sample(seq(1,10), 20)
+ * sample(seq(1,10), 6, undefined, false)
  */
-function sample(x, size, prob) {
-  if (typeof prob === 'undefined') prob = cumsum(rep(1/x.length, x))
+function sample(x, size, prob, replace) {
+  if (typeof prob === 'undefined') prob = rep(1/x.length, x.length)
+  if (typeof replace === 'undefined') replace = true
   x = _vectorize(x)
   prob = _vectorize(prob)
   if (x.length != prob.length) throw "Length of x and prob must be equal"
-  if (sum(prob) != 1) throw "Sum of probabilities must equal 1"
-  var sample_one = function(x, prob) {
+  if (Math.abs(1 - sum(prob)) > 1e-12) {
+    console.log("sum(prob) = "+sum(prob))
+    throw "Sum of probabilities must equal 1"
+  }
+  var sample_one = function(prob) {
     var p = Math.random()
-    //console.log(p)
-    var v = seq(1,x.length).reduce(function(acc,i) { 
-      if (p <= prob[i-1]) acc.push(x[i-1])
+    var v = fold(seq(1, prob.length), function(acc,i) { 
+      if (p <= prob[i-1]) acc.push(i-1)
       return acc
     },[])
     return v[0]
   }
-  return seq(1,size).map(function(z) { return sample_one(x, cumsum(prob)) })
+  if (replace) {
+    return map(seq(1,size),
+      function(z) { return x[sample_one(cumsum(prob))] })
+  } else {
+    return fold(seq(1,size), function(a, z) {
+      var idx = sample_one(cumsum(prob))
+      var p = prob[idx]
+      a.push(x[idx])
+      x.splice(idx,1)
+      prob.splice(idx,1)
+      prob = multiply(multiply(1/p, prob), 1/prob.length)
+      return a
+    }, [ ])
+  }
 }
 
 function runif(n, min, max) {
   if (typeof min === 'undefined') min = 0
   if (typeof max === 'undefined') max = 1
-  return seq(1,n).map(function(x) { return min + (max - min) * Math.random() })
+  return map(seq(1,n), function(x) { return min + (max - min) * Math.random() })
 }
 
-
-function zip(arrays) {
-  return arrays[0].map(function(_,i){
-    return arrays.map(function(array){return array[i]})
-  });
-}
 
