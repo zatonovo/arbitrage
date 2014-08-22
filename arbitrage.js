@@ -143,11 +143,11 @@ function expand_grid(xs, ys) {
   return do_call(c, raw)
 }
 
-function keys(x) {
+function rkeys(x) {
   return Object.keys(x)
 }
 
-function values(x) {
+function rvalues(x) {
   return map(Object.keys(x), function(k) { return x[k] })
 }
 
