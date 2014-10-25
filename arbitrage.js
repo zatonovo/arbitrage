@@ -83,6 +83,24 @@ function seq(from, to, by) {
   return Array.apply(0, Array(length_out)).map(step_fn)
 }
 
+function length(x) {
+  x = _vectorize(x)
+  return x.length
+}
+
+function diff(x) {
+  x = _vectorize(x)
+  var ab = zip(select(x,seq(1,length(x)-1)), select(x,seq(0,length(x)-2)))
+  return map(ab, function(z) { return z[0] - z[1] })
+}
+
+
+/**
+ * 
+ */
+function order(x, idx, decreasing) {
+}
+
 
 /**
  * Select a subset of an array using a vectorized form
@@ -95,7 +113,17 @@ function seq(from, to, by) {
 function select(x, idx) {
   x = _vectorize(x)
   idx = _vectorize(idx)
-  return idx.map(function(i) { return x[i] })
+  if (typeof(idx[0]) == 'boolean') {
+    if (length(x) != length(idx)) throw "Illegal use of boolean index"
+    var reduce_fn = function(acc, v, i) {
+      if (v) acc.push(x[i])
+      return acc
+    }
+    return fold(idx, reduce_fn, [ ])
+  } else if (typeof(idx[0]) == 'number') {
+    return idx.map(function(i) { return x[i] })
+  }
+  else throw "Illegal type"
 }
 
 /**
@@ -111,11 +139,33 @@ function select(x, idx) {
  */
 function which(x, fn) {
   x = _vectorize(x)
-  var reduce_fn = function(acc, v, i) {
-    if (fn(v)) acc.push(i)
-    return acc
+  if (typeof fn == 'function') {
+    var reduce_fn = function(acc, v, i) {
+      if (fn(v)) acc.push(i)
+      return acc
+    }
+    return fold(x, reduce_fn, [ ])
+  } else if (typeof fn[0] == 'boolean') {
+    var reduce_fn = function(acc, v, i) {
+      if (v) acc.push(i)
+      return acc
+    }
+    return fold(fn, reduce_fn, [ ])
   }
-  return fold(x, reduce_fn, [ ])
+  else throw "Illegal type"
+}
+
+/**
+ * Determine which members of x are within xs
+ */
+function within(x, xs) {
+  x = _vectorize(x)
+  xs = _vectorize(xs)
+  var fn = function(a,i) {
+    if (i >= length(xs)) return false
+    return a == xs[i] || fn(a,i+1)
+  }
+  return map(x, function(i) { return fn(i,0) })
 }
 
 function unique(x) {
@@ -152,6 +202,26 @@ function rvalues(x) {
 }
 
 
+/**
+ * Row-major
+ */
+function row_major(x, labels) {
+}
+
+/**
+ * Column-major
+ */
+function col_major(x, labels) {
+}
+
+function cbind(x, name, value) {
+  x = _vectorize(x)
+  value = _vectorize(value)
+  if (length(x) != length(value)) throw "Incompatible dimensions"
+
+  return map(x, function(y, i) { y[name] = value[i]; return y })
+}
+
 function table(x) {
   return fold(x, function(acc,i) {
     if (acc[i] === undefined) acc[i] = 1
@@ -184,6 +254,21 @@ function inner_product(x,y) {
   y = _vectorize(y)
   return sum(multiply(x,y))
 }
+
+function log(x) {
+  x = _vectorize(x)
+  return map(x, function(y) { return Math.log(y) })
+}
+
+function round(x, precision) {
+  if (typeof precision === 'undefined') precision = 0
+  x = _vectorize(x)
+  return map(x, function(y) { 
+    var e = Math.pow(10,precision)
+    return Math.round(y*e)/e
+  })
+}
+
 
 /**
  * Compute the sum of the values
