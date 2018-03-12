@@ -2,7 +2,19 @@ arbitrage.js
 ============
 
 Arbitrage.js takes advantage of R idioms in the world of Javascript giving 
-you a risk-free gain in productivity.
+you a risk-free gain in productivity. In particular, Arbitrage.js implements
+vectorization, recycling, and many base R functions in Javascript.
+For data scientists that need to write Javascript but don't have the time
+to learn all its idiosyncracies, arbitrage.js makes Javascript feel more
+like R.
+
+Since Javascript doesn't support vectors out of the box, an external library
+must do the work. Arbitrage.js does just this, while also providing tools to
+work with sequences in general as well as sample spaces and probability
+distributions.
+
+Vectorization
+-------------
 
 For those working with data and looking to perform data visualization,
 the concept of vectorization is extremely useful. The short definition
@@ -11,10 +23,15 @@ Additionally, functions are vector-aware, so operations like addition
 natively perform element-wise addition while operations like max
 natively know how to operate on an array.
 
-Since Javascript doesn't support vectors out of the box, an external library
-must do the work. Arbitrage.js does just this, while also providing tools to
-work with sequences in general as well as sample spaces and probability
-distributions.
+Types and Data Structures
+=========================
+
+Like R, arbitrage.js treats everything as a vector. All scalar values are
+converted to vectors.
+
+Tabular data is column-major. This differs from most JSON representations
+that are row-major.
+
 
 Sequence Operations
 ===================
@@ -95,7 +112,20 @@ y = sample(x, 100)
 
 You might then want to draw the results using d3.js.
 
+
+Testing
+=======
+
+Use the Makefile to run unit tests. This requires building the docker image.
+
+```{bash}
+$ make
+$ make test
+```
+
+Alternatively, manual testing can be done in the browser by opening index.html.
+
 Credits
 =======
 Author: Brian Lee Yung Rowe
-
+Copyright: Zato Novo
